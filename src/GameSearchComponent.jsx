@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import TagListComponent from "./TagListComponent";
 
 const API_KEY = "edab8554f3a14dbaa7a6901a8f073b24"; // Replace with your actual RAWG API key
 const API_BASE_URL = "https://api.rawg.io/api";
@@ -7,17 +9,22 @@ const GameSearchComponent = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedTag, setSelectedTag] = useState(null);
+  const navigate = useNavigate();
 
   const searchGames = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() && !selectedTag) return;
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/games?key=${API_KEY}&search=${encodeURIComponent(
-          searchQuery
-        )}&page_size=10`
-      );
+      let url = `${API_BASE_URL}/games?key=${API_KEY}&page_size=10`;
+      if (searchQuery.trim()) {
+        url += `&search=${encodeURIComponent(searchQuery)}`;
+      }
+      if (selectedTag) {
+        url += `&tags=${selectedTag.id}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       setGames(data.results);
     } catch (error) {
@@ -27,8 +34,18 @@ const GameSearchComponent = () => {
     }
   };
 
+  const handleGameClick = (gameId) => {
+    navigate(`/game/${gameId}`);
+  };
+
+  const handleTagSelect = (tag) => {
+    setSelectedTag(tag);
+    searchGames();
+  };
+
   return (
     <div style={{ padding: "16px" }}>
+      <div className="button-85 flex justify-center mb-5">GAME SEARCH</div>
       <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
         <input
           type="text"
@@ -58,6 +75,22 @@ const GameSearchComponent = () => {
         </button>
       </div>
 
+      {selectedTag && (
+        <div style={{ marginBottom: "16px" }}>
+          <p>Filtered by tag: {selectedTag.name}</p>
+          <button
+            onClick={() => {
+              setSelectedTag(null);
+              searchGames();
+            }}
+          >
+            Clear Tag Filter
+          </button>
+        </div>
+      )}
+
+      <TagListComponent onTagSelect={handleTagSelect} />
+
       <div
         style={{
           display: "grid",
@@ -72,7 +105,9 @@ const GameSearchComponent = () => {
               border: "1px solid #ccc",
               borderRadius: "8px",
               overflow: "hidden",
+              cursor: "pointer",
             }}
+            onClick={() => handleGameClick(game.id)}
           >
             <div style={{ padding: "16px" }}>
               <h3 style={{ margin: "0 0 8px 0" }}>{game.name}</h3>
